@@ -126,6 +126,18 @@
     <button class="reset-btn" @click="resetAll" v-if="candlesBlown">
       🔄 重新开始
     </button>
+
+    <!-- 刮开后的撒花层（仅彩带，无文字） -->
+    <div class="blessing-overlay" v-if="showBlessing">
+      <div class="confetti">
+        <span
+          v-for="n in 60"
+          :key="n"
+          class="confetti-piece"
+          :style="confettiStyle(n)"
+        ></span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -136,6 +148,7 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
 const candlesBlown = ref(false);
 const showWishes = ref(false);
 const showFireworks = ref(false);
+const showBlessing = ref(false);
 
 // 标题文字
 const titleText = "张总生日快乐~";
@@ -259,6 +272,13 @@ const onPointerUp = (e) => {
   if (scratchedPercent.value >= 50) revealAll();
 };
 
+const launchBlessing = () => {
+  showBlessing.value = true;
+  setTimeout(() => {
+    showBlessing.value = false;
+  }, 3500);
+};
+
 const revealAll = () => {
   fullyRevealed.value = true;
   const canvas = scratchCanvas.value;
@@ -266,6 +286,7 @@ const revealAll = () => {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   scratchedPercent.value = 100;
+  launchBlessing();
 };
 
 const resetScratch = async () => {
@@ -331,11 +352,28 @@ const getFireworkStyle = (index) => {
   };
 };
 
+// 彩带碎片样式
+const confettiStyle = (i) => {
+  const colors = ["#ff6b6b", "#ffd93d", "#6bcBff", "#b28dff", "#2ed573"];
+  const left = Math.round((i / 40) * 100);
+  const delay = (i % 10) * 0.06;
+  const duration = 2.2 + (i % 5) * 0.15;
+  const rotate = (i % 360) + "deg";
+  return {
+    left: left + "%",
+    backgroundColor: colors[i % colors.length],
+    animationDelay: delay + "s",
+    animationDuration: duration + "s",
+    transform: `rotate(${rotate})`,
+  };
+};
+
 // 重置所有状态
 const resetAll = () => {
   candlesBlown.value = false;
   showWishes.value = false;
   showFireworks.value = false;
+  showBlessing.value = false;
   // 同时重置刮刮卡
   resetScratch();
 };
@@ -934,6 +972,55 @@ body {
 .reset-btn:hover {
   background: rgba(255, 255, 255, 0.32);
   transform: translateY(-1px) scale(1.04);
+}
+
+/* 刮开后祝福动画层 */
+.blessing-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* 仅保留撒花动画，文本样式与动画已移除 */
+
+.confetti {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -10vh;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  animation-name: confettiFall, confettiSpin;
+  animation-timing-function: ease-in, linear;
+  animation-iteration-count: 1, infinite;
+}
+
+@keyframes confettiFall {
+  0% {
+    transform: translateY(-10vh);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh);
+    opacity: 0;
+  }
+}
+
+@keyframes confettiSpin {
+  0% {
+    rotate: 0deg;
+  }
+  100% {
+    rotate: 360deg;
+  }
 }
 
 /* 移动端优化 */
