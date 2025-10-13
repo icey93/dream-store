@@ -92,7 +92,7 @@
             <div class="scratch-text">
               <div>📷</div>
               <div>恭喜您获得了任意型号相机一台</div>
-              <div>请凭截图兑换~</div>
+              <div>请找作者兑换~</div>
             </div>
           </div>
           <canvas
@@ -105,10 +105,10 @@
             @pointerleave="onPointerUp"
           ></canvas>
         </div>
-        <div class="scratch-info">
+        <!-- <div class="scratch-info">
           已刮开 {{ Math.round(scratchedPercent) }}%
           <button class="scratch-reset" @click="resetScratch">重置</button>
-        </div>
+        </div> -->
       </div>
 
       <!-- 烟花效果 -->
@@ -374,11 +374,23 @@ body {
 /* 组件样式 */
 .birthday-app {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: radial-gradient(
+      1200px 600px at 20% -10%,
+      rgba(255, 255, 255, 0.12),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 120% 10%,
+      rgba(255, 255, 255, 0.08),
+      transparent 55%
+    ),
+    linear-gradient(135deg, #5b7cfa 0%, #7a50c8 50%, #4c3ac6 100%);
   position: relative;
   overflow-x: hidden;
-  padding: 20px;
-  font-family: "Arial", sans-serif;
+  padding: 40px 20px;
+  font-family: "Poppins", "Noto Sans SC", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
 }
 
 /* 简易刮刮卡样式 */
@@ -465,8 +477,8 @@ body {
 
 @media (max-width: 480px) {
   .scratch-card-container {
-    width: 280px;
-    height: 150px;
+    width: 300px;
+    height: 160px;
   }
 
   .scratch-text > div:first-child {
@@ -580,6 +592,7 @@ body {
   max-width: 400px;
   margin: 0 auto;
   text-align: center;
+  margin-top: 40px;
 }
 
 /* 头像区域样式 */
@@ -692,15 +705,16 @@ body {
 
 /* 标题区域 */
 .title-section {
-  margin-bottom: 40px;
+  margin-bottom: 10px;
 }
 
 .birthday-title {
-  font-size: 2.5rem;
-  font-weight: bold;
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: #fff;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  margin-bottom: 10px;
+  text-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  margin-bottom: 12px;
 }
 
 .title-char {
@@ -725,14 +739,14 @@ body {
 }
 
 .subtitle {
-  color: #fff;
-  font-size: 1.1rem;
-  opacity: 0.9;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
 }
 
 /* 蛋糕样式 */
 .cake-container {
-  margin: 40px 0;
+  margin: 0;
   cursor: pointer;
 }
 
@@ -918,8 +932,8 @@ body {
 }
 
 .reset-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.32);
+  transform: translateY(-1px) scale(1.04);
 }
 
 /* 移动端优化 */
