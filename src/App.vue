@@ -92,7 +92,7 @@
             <div class="scratch-text">
               <div>📷</div>
               <div>恭喜您获得了任意型号相机一台~</div>
-              <div>永久有效，最终解释权归你自己所有</div>
+              <div>永久有效，最终解释权您说了蒜~</div>
             </div>
           </div>
           <canvas
