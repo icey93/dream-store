@@ -84,6 +84,33 @@
         </div>
       </div> -->
 
+      <!-- 简易刮刮卡：点蛋糕后出现 -->
+      <div class="scratch-card" v-if="candlesBlown">
+        <div class="scratch-card-title">🎁 刮开查看祝福</div>
+        <div class="scratch-card-container" ref="scratchContainer">
+          <div class="scratch-under">
+            <div class="scratch-text">
+              <div>📷</div>
+              <div>恭喜您获得了任意型号相机一台</div>
+              <div>请凭截图兑换~</div>
+            </div>
+          </div>
+          <canvas
+            class="scratch-overlay"
+            ref="scratchCanvas"
+            @pointerdown="onPointerDown"
+            @pointermove="onPointerMove"
+            @pointerup="onPointerUp"
+            @pointercancel="onPointerUp"
+            @pointerleave="onPointerUp"
+          ></canvas>
+        </div>
+        <div class="scratch-info">
+          已刮开 {{ Math.round(scratchedPercent) }}%
+          <button class="scratch-reset" @click="resetScratch">重置</button>
+        </div>
+      </div>
+
       <!-- 烟花效果 -->
       <div class="fireworks" v-if="showFireworks">
         <div
@@ -103,7 +130,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
 
 // 响应式数据
 const candlesBlown = ref(false);
@@ -122,11 +149,157 @@ const wishes = [
   "💖 愿你被这个世界温柔以待",
 ];
 
+// 刮刮卡：可配置文案
+const scratchText = ref("恭喜：您获得了");
+
+// 刮刮卡 refs 与状态
+const scratchCanvas = ref(null);
+const scratchContainer = ref(null);
+const isScratching = ref(false);
+const lastPos = ref(null);
+const scratchedPercent = ref(0);
+const fullyRevealed = ref(false);
+
+// 初始化/重绘覆盖层
+const drawCover = () => {
+  const canvas = scratchCanvas.value;
+  const container = scratchContainer.value;
+  if (!canvas || !container) return;
+  const rect = container.getBoundingClientRect();
+  canvas.width = Math.round(rect.width);
+  canvas.height = Math.round(rect.height);
+  const ctx = canvas.getContext("2d");
+  // 简单灰色涂层
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = "#bdbdbd";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+};
+
+const resizeOverlay = () => {
+  // 仅当未完全揭示时重绘覆盖层
+  const keepReveal = fullyRevealed.value;
+  drawCover();
+  if (keepReveal) {
+    // 如果已完全揭示，清空覆盖层
+    const canvas = scratchCanvas.value;
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+};
+
+const getPos = (e) => {
+  const canvas = scratchCanvas.value;
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  return { x, y };
+};
+
+const eraseAt = (pos) => {
+  const canvas = scratchCanvas.value;
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.globalCompositeOperation = "destination-out";
+  // 简单橡皮擦：线条+圆点
+  if (lastPos.value) {
+    ctx.lineWidth = 24;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(lastPos.value.x, lastPos.value.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, 12, 0, Math.PI * 2);
+  ctx.fill();
+  lastPos.value = pos;
+};
+
+const computeScratched = () => {
+  const canvas = scratchCanvas.value;
+  if (!canvas) return 0;
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  let transparent = 0;
+  // 统计 alpha < 128 的像素
+  for (let i = 3; i < img.data.length; i += 4) {
+    if (img.data[i] < 128) transparent++;
+  }
+  const total = img.data.length / 4;
+  return (transparent / total) * 100;
+};
+
+const onPointerDown = (e) => {
+  if (fullyRevealed.value) return;
+  isScratching.value = true;
+  e.target.setPointerCapture?.(e.pointerId);
+  eraseAt(getPos(e));
+  scratchedPercent.value = computeScratched();
+  if (scratchedPercent.value >= 50) revealAll();
+};
+
+const onPointerMove = (e) => {
+  if (!isScratching.value || fullyRevealed.value) return;
+  eraseAt(getPos(e));
+  // 取样计算，避免每像素都算
+  if (Math.random() < 0.25) {
+    scratchedPercent.value = computeScratched();
+    if (scratchedPercent.value >= 50) revealAll();
+  }
+};
+
+const onPointerUp = (e) => {
+  if (!isScratching.value) return;
+  isScratching.value = false;
+  lastPos.value = null;
+  scratchedPercent.value = computeScratched();
+  if (scratchedPercent.value >= 50) revealAll();
+};
+
+const revealAll = () => {
+  fullyRevealed.value = true;
+  const canvas = scratchCanvas.value;
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  scratchedPercent.value = 100;
+};
+
+const resetScratch = async () => {
+  fullyRevealed.value = false;
+  scratchedPercent.value = 0;
+  lastPos.value = null;
+  await nextTick();
+  drawCover();
+};
+
+onMounted(() => {
+  nextTick(() => {
+    resizeOverlay();
+    window.addEventListener("resize", resizeOverlay, { passive: true });
+  });
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", resizeOverlay);
+});
+
 // 吹蜡烛
 const blowCandles = () => {
   if (candlesBlown.value) return;
 
   candlesBlown.value = true;
+
+  // 初始化刮刮卡覆盖层，避免出现底部文案短暂露出
+  fullyRevealed.value = false;
+  scratchedPercent.value = 0;
+  lastPos.value = null;
+  nextTick(() => {
+    drawCover();
+  });
 
   // 延迟显示祝福语
   setTimeout(() => {
@@ -163,6 +336,8 @@ const resetAll = () => {
   candlesBlown.value = false;
   showWishes.value = false;
   showFireworks.value = false;
+  // 同时重置刮刮卡
+  resetScratch();
 };
 
 // 头像图片加载错误处理
@@ -204,6 +379,107 @@ body {
   overflow-x: hidden;
   padding: 20px;
   font-family: "Arial", sans-serif;
+}
+
+/* 简易刮刮卡样式 */
+.scratch-card {
+  margin: 30px auto 0;
+}
+
+.scratch-card-title {
+  color: #fff;
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+}
+
+.scratch-card-container {
+  position: relative;
+  width: 320px;
+  height: 160px;
+  margin: 0 auto;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  background: #fff;
+}
+
+.scratch-under {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 1;
+}
+
+.scratch-text {
+  color: #3a0ca3;
+  text-align: center;
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  line-height: 1.25;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.scratch-text > div:first-child {
+  font-size: 2rem;
+}
+
+.scratch-text > div:nth-child(2) {
+  font-size: 1.15rem;
+}
+
+.scratch-text > div:nth-child(3) {
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+.scratch-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+  z-index: 2;
+}
+
+.scratch-info {
+  margin-top: 10px;
+  color: #fff;
+}
+
+.scratch-reset {
+  margin-left: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .scratch-card-container {
+    width: 280px;
+    height: 150px;
+  }
+
+  .scratch-text > div:first-child {
+    font-size: 1.7rem;
+  }
+
+  .scratch-text > div:nth-child(2) {
+    font-size: 1.05rem;
+  }
+
+  .scratch-text > div:nth-child(3) {
+    font-size: 0.9rem;
+  }
 }
 
 /* 背景装饰 */
